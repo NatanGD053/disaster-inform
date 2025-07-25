@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Informasi Bencana Alam Dunia</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Roboto', sans-serif;
+            background-color: #000000;
+            color: #fff;
+            overflow-x: hidden;
+        }
+        #earth-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            background: radial-gradient(ellipse at center, #000 0%, #00111f 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            box-shadow: 0 0 30px 5px rgba(0, 150, 255, 0.7);
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        form {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        input[type="text"], select {
+            padding: 10px;
+            font-size: 1em;
+            border-radius: 5px;
+            border: none;
+            width: 200px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            border-radius: 5px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #results {
+            margin-top: 20px;
+        }
+        .event {
+            background-color: #111;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 0 10px #007bff;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .event img {
+            width: 120px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 5px;
+            flex-shrink: 0;
+        }
+        .event-details {
+            flex-grow: 1;
+        }
+        .event-title {
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-bottom: 5px;
+        }
+        .event-date {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+        .event-description {
+            font-size: 1em;
+        }
+        #loading {
+            text-align: center;
+            font-size: 1.2em;
+            color: #00aaff;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="earth-container" aria-label="Animasi bumi berputar">
+        <!-- Canvas untuk animasi bumi 3D -->
+        <canvas id="earth"></canvas>
+    </div>
+    <div class="container">
+        <h1>Informasi Bencana Alam Dunia</h1>
+        <form id="search-form" aria-label="Form pencarian bencana alam">
+            <input type="text" id="country-input" placeholder="Masukkan nama negara" aria-label="Nama negara" required />
+            <select id="disaster-type" aria-label="Jenis bencana alam" required>
+                <option value="" disabled selected>Pilih jenis bencana alam</option>
+                <option value="earthquake">Gempa Bumi</option>
+                <option value="flood">Banjir</option>
+                <option value="hurricane">Badai / Topan</option>
+                <option value="wildfire">Kebakaran Hutan</option>
+                <option value="volcano">Letusan Gunung Berapi</option>
+            </select>
+            <button type="submit">Cari</button>
+        </form>
+        <div id="loading" role="status" aria-live="polite">Memuat data...</div>
+        <div id="results" aria-live="polite" aria-atomic="true"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+    <script>
+        // Setup scene, camera, renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+        camera.position.z = 3;
+
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('earth'), alpha: true, antialias: true });
+        renderer.setSize(200, 200);
+        renderer.setClearColor(0x000000, 0); // transparent background
+
+        // Create earth geometry and material with texture
+        const geometry = new THREE.SphereGeometry(1, 64, 64);
+        const textureLoader = new THREE.TextureLoader();
+        const earthTexture = textureLoader.load('https://upload.wikimedia.org/wikipedia/commons/9/97/The_Earth_seen_from_Apollo_17.jpg');
+        const material = new THREE.MeshPhongMaterial({ map: earthTexture });
+
+        const earth = new THREE.Mesh(geometry, material);
+        scene.add(earth);
+
+        // Add light
+        const ambientLight = new THREE.AmbientLight(0xcccccc, 1.2);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        directionalLight.position.set(5, 3, 5);
+        scene.add(directionalLight);
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            earth.rotation.y += 0.005;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Data bencana alam statis
+        const form = document.getElementById('search-form');
+        const countryInput = document.getElementById('country-input');
+        const disasterType = document.getElementById('disaster-type');
+        const results = document.getElementById('results');
+        const loading = document.getElementById('loading');
+
+        const disasterData = {
+            earthquake: [
+    {
+      country: 'Indonesia',
+      title: 'Gempa Bumi Aceh 2004',
+      date: '26 Desember 2004',
+      description: 'Gempa 9,3 SR disertai tsunami besar, menewaskan sekitar 167.799 jiwa di Indonesia.',
+      image: 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Indian_Ocean_Tsunami_2004.jpg'
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa & Tsunami Flores 1992',
+      date: '12 Desember 1992',
+      description: 'Gempa 7,7 SR dan tsunami di Flores, NTT. Korban jiwa sekitar 2.500 orang.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa Yogyakarta 2006',
+      date: '27 Mei 2006',
+      description: 'Gempa 6,3–6,4 SR mengguncang DIY dan sekitarnya, korban meninggal ~6.234 orang.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa Sumatra Barat 2009',
+      date: '30 September 2009',
+      description: 'Gempa 7,6 SR melanda Padang dan sekitarnya, menyebabkan lebih dari 1.100 korban jiwa.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa Palu-Donggala 2018',
+      date: '28 September 2018',
+      description: 'Gempa 7,4 SR disertai tsunami dan likuifaksi di Sulawesi Tengah. Korban ~2.045 jiwa.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa Cianjur 2022',
+      date: '21 November 2022',
+      description: 'Gempa 5,6 SR mengguncang Cianjur, Jawa Barat. Korban meninggal ~335 jiwa.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa Mentawai 2010',
+      date: '25 Oktober 2010',
+      description: 'Gempa disertai tsunami yang menewaskan ~408 orang di Kepulauan Mentawai.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa Lombok 2018',
+      date: 'Agustus 2018',
+      description: 'Serangkaian gempa mengguncang NTB dengan korban jiwa ~564 orang.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa Irian Jaya 1981',
+      date: '1981',
+      description: 'Gempa besar mengguncang Irian Jaya, menyebabkan ~305 korban jiwa.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa Sumba 1977',
+      date: '1977',
+      description: 'Gempa bumi dan tsunami di Sumba menewaskan sekitar 316 jiwa.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa Pulau Seram 1899',
+      date: '1899',
+      description: 'Gempa besar disertai tsunami di Seram, menewaskan ~3.389 jiwa.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa Sumatra 1907',
+      date: '1907',
+      description: 'Gempa laut dalam memicu tsunami di Sumatra barat, korban ~2.118 jiwa.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa Bali 1917',
+      date: '1917',
+      description: 'Gempa besar di Bali menyebabkan ~1.500 korban jiwa.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa Jawa 1867',
+      date: '1867',
+      description: 'Gempa besar mengguncang Jawa Tengah. Korban jiwa diperkirakan ~700 orang.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa Wonosobo 1924',
+      date: '1924',
+      description: 'Gempa disertai longsor di Wonosobo menewaskan sekitar 727 orang.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa Sumatra 1933',
+      date: '1933',
+      description: 'Gempa besar di wilayah barat Sumatra menyebabkan ~788 korban jiwa.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Gempa & Tsunami Jawa Barat 2006',
+      date: '17 Juli 2006',
+      description: 'Gempa laut selatan disertai tsunami di Pangandaran. Korban jiwa ~668.',
+      image: ''
+    }
+  ],
+  volcano: [
+    {
+      country: 'Indonesia',
+      title: 'Letusan Tambora 1815',
+      date: '10 April 1815',
+      description: 'Letusan VEI 7, memicu musim tanpa panas global. Korban total ~105.000 jiwa.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Letusan Krakatau 1883',
+      date: '26 Agustus 1883',
+      description: 'Letusan dahsyat disertai tsunami, menewaskan ~36.600 jiwa.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Letusan Gunung Kelud 1919',
+      date: '19 Mei 1919',
+      description: 'Letusan besar menyebabkan aliran lahar mematikan. Korban jiwa ~5.110.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Letusan Galunggung 1822',
+      date: '8 Oktober 1822',
+      description: 'Letusan dengan awan panas menewaskan sekitar ~4.011 jiwa.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Letusan Awu 1892',
+      date: '7 Juni 1892',
+      description: 'Letusan gunung Awu di Sangihe menewaskan sekitar 1.532 orang.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Letusan Gunung Agung 1963',
+      date: '17 Maret 1963',
+      description: 'Letusan disertai aliran lava dan tsunami kecil. Korban jiwa ~1.148.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Letusan Merapi 1930',
+      date: '25 November 1930',
+      description: 'Letusan disertai awan panas. Korban jiwa mencapai ~1.369 orang.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Letusan Gunung Marapi 1979',
+      date: '30 April 1979',
+      description: 'Letusan menyebabkan korban antara 80–100 jiwa.',
+      image: ''
+    },
+    {
+      country: 'Indonesia',
+      title: 'Letusan Merapi 2010',
+      date: '5 November 2010',
+      description: 'Letusan besar dengan guguran awan panas. Korban meninggal ~353 orang.',
+      image: ''
+    }
+  ],
+  hurricane: [
+    {
+      country: 'Indonesia',
+      title: 'Siklon Tropis Flores 1973',
+      date: '1973',
+      description: 'Siklon tropis melanda NTT dan menyebabkan sekitar ~1.653 kematian.',
+      image: ''
+    }
+  ],
+  flood : [
+    {
+      country: 'Indonesia',
+      title: 'Tsunami Selat Sunda 2018',
+      date: '22 Desember 2018',
+      description: 'Tsunami akibat longsoran erupsi Anak Krakatau. Korban jiwa ~437.',
+      image: ''
+    }
+  ]
+        };
+
+        function filterDisasters(country, type) {
+            return disasterData[type].filter(event => event.country.toLowerCase() === country.toLowerCase());
+        }
+
+        function displayResults(events) {
+            results.innerHTML = '';
+            if (events.length === 0) {
+                results.innerHTML = '<p>Tidak ditemukan kejadian bencana alam untuk pilihan Anda.</p>';
+                return;
+            }
+            events.forEach(event => {
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'event';
+
+                const img = document.createElement('img');
+                img.src = event.image;
+                img.alt = event.title;
+
+                const detailsDiv = document.createElement('div');
+                detailsDiv.className = 'event-details';
+
+                const title = document.createElement('div');
+                title.className = 'event-title';
+                title.textContent = event.title;
+
+                const date = document.createElement('div');
+                date.className = 'event-date';
+                date.textContent = event.date;
+
+                const desc = document.createElement('div');
+                desc.className = 'event-description';
+                desc.textContent = event.description;
+
+                detailsDiv.appendChild(title);
+                detailsDiv.appendChild(date);
+                detailsDiv.appendChild(desc);
+
+                eventDiv.appendChild(img);
+                eventDiv.appendChild(detailsDiv);
+
+                results.appendChild(eventDiv);
+            });
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            results.innerHTML = '';
+            loading.style.display = 'block';
+
+            const country = countryInput.value.trim();
+            const type = disasterType.value;
+
+            setTimeout(() => {
+                const filtered = filterDisasters(country, type);
+                displayResults(filtered);
+                loading.style.display = 'none';
+            }, 1000); // Simulate loading delay
+        });
+    </script>
+</body>
+</html>
